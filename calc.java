@@ -1,23 +1,49 @@
-import java.util.Queue;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
 import java.util.StringTokenizer;
 
+/**
+ * calc - a prefix notation calculator
+ */
 public class calc {
-    public calc(Queue<String> q) {
-        expr res = parse(q);
-        System.out.println(res);
-        System.out.println(res.eval());
+    public calc() {
+        Scanner scanner = new Scanner(System.in);
+        while(true) {
+            System.out.print("> ");
+            String expr = scanner.nextLine();
+            if(expr.equals("quit")) break;
+            if(expr.equals("help") || expr.equals("?"))
+                usage();
+            Queue<String> q = new LinkedList<>();
+            StringTokenizer st = new StringTokenizer(expr);
+            while(st.hasMoreTokens()) {
+                q.add(st.nextToken(" "));
+            }
+            System.out.println(q);
+            try {
+                expr res = parse(q);
+                System.out.println(res.eval());
+            } catch(Exception e) {
+                System.err.println("Error: " + e.getMessage());
+            }
+        }
     }
 
-    private expr parse(Queue<String> q) {
-        String token = q.remove();
+    private expr parse(Queue<String> q) throws Exception {
+        if(q.size() == 0) throw new Exception("Invalid input.");
+        String token = q.remove().replace(")","");
         try {
-            return new num(Integer.parseInt(token));
+            return new num(Double.parseDouble(token));
         } catch(NumberFormatException nfe) {
             if(token.equals("(+")) {
-                return new add(parse(q),parse(q));
+                return new add(parse(q), parse(q));
             } else if(token.equals("(-")) {
-                return new sub(parse(q),parse(q));
+                if(q.peek().contains(")"))
+                    return new neg(parse(q));
+                else
+                    return new sub(parse(q), parse(q));
             } else if(token.equals("(*")) {
                 return new mul(parse(q),parse(q));
             } else if(token.equals("(/")) {
@@ -26,25 +52,20 @@ public class calc {
                 return new sqrt(parse(q));
             }
         }
-        System.out.println("Invalid input.");
-        System.exit(1);
-        return null;
+        throw new Exception("Invalid input.");
     }
 
-    public static void main(String[] args) {
-        if(args.length != 1) usage();
-        String expr = args[0];
-        Queue<String> q = new LinkedList<>();
-        StringTokenizer st = new StringTokenizer(expr);
-        while(st.hasMoreTokens()) {
-            q.add(st.nextToken(" )"));
+    public static void main(String[] args) throws Exception {
+        try {
+            new calc();
+        } catch(Exception e) {
+            System.exit(1);
         }
-        new calc(q);
     }
 
     private static void usage() {
-        System.out.println("usage: calc <expr>");
-        System.exit(1);
+        System.out.println("calc - a prefix notation calculator");
+        System.out.println("Enter an expression below to be evaluated.");
     }
 
     private interface expr {
@@ -67,75 +88,123 @@ public class calc {
         }
     }
 
-    private class add implements expr {
-        expr left;
-        expr right;
+    private class neg implements expr {
+        expr e;
 
-        add(expr left, expr right) {
-            this.left = left;
-            this.right = right;
+        neg(expr e) {
+            this.e = e;
         }
 
         public double eval() {
-            return left.eval() + right.eval();
+            return - e.eval();
         }
 
         public String toString() {
-            return "(" + left.toString() + " + " + right.toString() + ")";
+            return "-" + e.eval();
+        }
+    }
+
+    private class add implements expr {
+        Queue<expr> exprs;
+
+        add(expr... expr_args) {
+            this.exprs = new LinkedList<>();
+            for(expr e : expr_args)
+                exprs.add(e);
+        }
+
+        public double eval() {
+            Iterator<expr> it = exprs.iterator();
+            double ret = it.next().eval();
+            while(it.hasNext())
+                ret += it.next().eval();
+            return ret;
+        }
+
+        public String toString() {
+            Iterator<expr> it = exprs.iterator();
+            String ret = it.next().toString();
+            while(it.hasNext())
+                ret += " + " + it.next().toString();
+            return ret + ")";
         }
     }
 
     private class sub implements expr {
-        expr left;
-        expr right;
+        Queue<expr> exprs;
 
-        sub(expr left, expr right) {
-            this.left = left;
-            this.right = right;
+        sub(expr... expr_args) {
+            exprs = new LinkedList<>();
+            for(expr e : expr_args)
+                exprs.add(e);
         }
 
         public double eval() {
-            return left.eval() - right.eval();
+            Iterator<expr> it = exprs.iterator();
+            double ret = it.next().eval();
+            while(it.hasNext())
+                ret -= it.next().eval();
+            return ret;
         }
 
         public String toString() {
-            return "(" + left.toString() + " - " + right.toString() + ")";
+            Iterator<expr> it = exprs.iterator();
+            String ret = it.next().toString();
+            while(it.hasNext())
+                ret += " - " + it.next().toString();
+            return ret + ")";
         }
     }
 
     private class mul implements expr {
-        expr left;
-        expr right;
+        Queue<expr> exprs;
 
-        mul(expr left, expr right) {
-            this.left = left;
-            this.right = right;
+        mul(expr... expr_args) {
+            exprs = new LinkedList<>();
+            for(expr e : expr_args)
+                exprs.add(e);
         }
 
         public double eval() {
-            return left.eval() * right.eval();
+            Iterator<expr> it = exprs.iterator();
+            double ret = it.next().eval();
+            while(it.hasNext())
+                ret *= it.next().eval();
+            return ret;
         }
 
         public String toString() {
-            return "(" + left.toString() + " * " + right.toString() + ")";
+            Iterator<expr> it = exprs.iterator();
+            String ret = it.next().toString();
+            while(it.hasNext())
+                ret += " * " + it.next().toString();
+            return ret + ")";
         }
     }
 
     private class div implements expr {
-        expr left;
-        expr right;
+        Queue<expr> exprs;
 
-        div(expr left, expr right) {
-            this.left = left;
-            this.right = right;
+        div(expr... expr_args) {
+            exprs = new LinkedList<>();
+            for(expr e : expr_args)
+                exprs.add(e);
         }
 
         public double eval() {
-            return left.eval() - right.eval();
+            Iterator<expr> it = exprs.iterator();
+            double ret = it.next().eval();
+            while(it.hasNext())
+                ret /= it.next().eval();
+            return ret;
         }
 
         public String toString() {
-            return "(" + left.toString() + " / " + right.toString() + ")";
+            Iterator<expr> it = exprs.iterator();
+            String ret = it.next().toString();
+            while(it.hasNext())
+                ret += " * " + it.next().toString();
+            return ret + ")";
         }
     }
 
