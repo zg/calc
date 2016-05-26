@@ -2,7 +2,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Scanner;
-import java.util.StringTokenizer;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.DoubleBinaryOperator;
 
@@ -19,10 +18,9 @@ public class calc {
             if(expr.equals("help") || expr.equals("?"))
                 usage();
             Queue<String> q = new LinkedList<>();
-            StringTokenizer st = new StringTokenizer(expr);
-            while(st.hasMoreTokens()) {
-                q.add(st.nextToken(" "));
-            }
+            Scanner exprScanner = new Scanner(expr);
+            while(exprScanner.hasNext())
+                q.add(exprScanner.next());
             System.out.println(q);
             try {
                 Expression res = parse(q);
