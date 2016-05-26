@@ -3,6 +3,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Scanner;
 import java.util.StringTokenizer;
+import java.util.function.DoubleUnaryOperator;
+import java.util.function.DoubleBinaryOperator;
 
 /**
  * calc - a prefix notation calculator
@@ -23,7 +25,7 @@ public class calc {
             }
             System.out.println(q);
             try {
-                expr res = parse(q);
+                Expression res = parse(q);
                 System.out.println(res.eval());
             } catch(Exception e) {
                 System.err.println("Error: " + e.getMessage());
@@ -31,25 +33,25 @@ public class calc {
         }
     }
 
-    private expr parse(Queue<String> q) throws Exception {
-        if(q.size() == 0) throw new Exception("Invalid input.");
+    private Expression parse(Queue<String> q) throws Exception {
+        if(q.isEmpty()) throw new Exception("Invalid input.");
         String token = q.remove().replace(")","");
         try {
-            return new num(Double.parseDouble(token));
+            return new Number(Double.parseDouble(token));
         } catch(NumberFormatException nfe) {
             if(token.equals("(+")) {
-                return new add(parse(q), parse(q));
+                return new Add(parse(q), parse(q));
             } else if(token.equals("(-")) {
                 if(q.peek().contains(")"))
-                    return new neg(parse(q));
+                    return new Negate(parse(q));
                 else
-                    return new sub(parse(q), parse(q));
+                    return new Subtract(parse(q), parse(q));
             } else if(token.equals("(*")) {
-                return new mul(parse(q),parse(q));
+                return new Multiply(parse(q), parse(q));
             } else if(token.equals("(/")) {
-                return new div(parse(q),parse(q));
+                return new Divide(parse(q), parse(q));
             } else if(token.equals("(sqrt")) {
-                return new sqrt(parse(q));
+                return new SquareRoot(parse(q));
             }
         }
         throw new Exception("Invalid input.");
@@ -68,14 +70,15 @@ public class calc {
         System.out.println("Enter an expression below to be evaluated.");
     }
 
-    private interface expr {
+    public interface Expression {
         public double eval();
+        public String toString();
     }
 
-    private class num implements expr {
+    static class Number implements Expression {
         double val;
 
-        num(double val) {
+        Number(double val) {
             this.val = val;
         }
 
@@ -88,139 +91,94 @@ public class calc {
         }
     }
 
-    private class neg implements expr {
-        expr e;
+    static class UnaryExpression implements Expression {
+        private String operator;
+        private double defaultValue;
+        private DoubleUnaryOperator op;
+        private Expression expression;
 
-        neg(expr e) {
-            this.e = e;
+        UnaryExpression(String operator, double defaultValue,
+                        DoubleUnaryOperator op, Expression expression) {
+            this.operator = operator;
+            this.defaultValue = defaultValue;
+            this.op = op;
+            this.expression = expression;
         }
 
         public double eval() {
-            return - e.eval();
+            return op.applyAsDouble(expression.eval());
         }
 
         public String toString() {
-            return "-" + e.eval();
+            return operator + "(" + expression.toString() + ")";
         }
     }
 
-    private class add implements expr {
-        Queue<expr> exprs;
+    static class BinaryExpression implements Expression {
+        private String operator;
+        private double defaultValue;
+        private DoubleBinaryOperator op;
+        private Queue<Expression> expressions;
 
-        add(expr... expr_args) {
-            this.exprs = new LinkedList<>();
-            for(expr e : expr_args)
-                exprs.add(e);
+        BinaryExpression(String operator, double defaultValue,
+                         DoubleBinaryOperator op, Expression[] expressions) {
+            this.operator = operator;
+            this.defaultValue = defaultValue;
+            this.op = op;
+            this.expressions = new LinkedList<Expression>();
+            for(Expression expression : expressions)
+                this.expressions.add(expression);
         }
 
         public double eval() {
-            Iterator<expr> it = exprs.iterator();
-            double ret = it.next().eval();
-            while(it.hasNext())
-                ret += it.next().eval();
+            return expressions.stream()
+                              .mapToDouble(Expression::eval)
+                              .reduce(op)
+                              .orElse(defaultValue);
+        }
+
+        public String toString() {
+            Iterator it = expressions.iterator();
+            String ret = it.next().toString();
+            for(Expression expression : expressions)
+                ret += operator + it.next().toString();
             return ret;
         }
+    }
 
-        public String toString() {
-            Iterator<expr> it = exprs.iterator();
-            String ret = it.next().toString();
-            while(it.hasNext())
-                ret += " + " + it.next().toString();
-            return ret + ")";
+    static class Negate extends UnaryExpression {
+        Negate(Expression expression) {
+            super("-", 0.0, (v) -> -v, expression);
         }
     }
 
-    private class sub implements expr {
-        Queue<expr> exprs;
-
-        sub(expr... expr_args) {
-            exprs = new LinkedList<>();
-            for(expr e : expr_args)
-                exprs.add(e);
-        }
-
-        public double eval() {
-            Iterator<expr> it = exprs.iterator();
-            double ret = it.next().eval();
-            while(it.hasNext())
-                ret -= it.next().eval();
-            return ret;
-        }
-
-        public String toString() {
-            Iterator<expr> it = exprs.iterator();
-            String ret = it.next().toString();
-            while(it.hasNext())
-                ret += " - " + it.next().toString();
-            return ret + ")";
+    static class SquareRoot extends UnaryExpression {
+        SquareRoot(Expression expression) {
+            super("√", 0.0, (v) -> Math.sqrt(v), expression);
         }
     }
 
-    private class mul implements expr {
-        Queue<expr> exprs;
-
-        mul(expr... expr_args) {
-            exprs = new LinkedList<>();
-            for(expr e : expr_args)
-                exprs.add(e);
-        }
-
-        public double eval() {
-            Iterator<expr> it = exprs.iterator();
-            double ret = it.next().eval();
-            while(it.hasNext())
-                ret *= it.next().eval();
-            return ret;
-        }
-
-        public String toString() {
-            Iterator<expr> it = exprs.iterator();
-            String ret = it.next().toString();
-            while(it.hasNext())
-                ret += " * " + it.next().toString();
-            return ret + ")";
+    static class Add extends BinaryExpression {
+        Add(Expression... expressions) {
+            super("+", 0.0, (l, r) -> l + r, expressions);
         }
     }
 
-    private class div implements expr {
-        Queue<expr> exprs;
-
-        div(expr... expr_args) {
-            exprs = new LinkedList<>();
-            for(expr e : expr_args)
-                exprs.add(e);
-        }
-
-        public double eval() {
-            Iterator<expr> it = exprs.iterator();
-            double ret = it.next().eval();
-            while(it.hasNext())
-                ret /= it.next().eval();
-            return ret;
-        }
-
-        public String toString() {
-            Iterator<expr> it = exprs.iterator();
-            String ret = it.next().toString();
-            while(it.hasNext())
-                ret += " * " + it.next().toString();
-            return ret + ")";
+    static class Subtract extends BinaryExpression {
+        Subtract(Expression... expressions) {
+            super("-", 0.0, (l, r) -> l - r, expressions);
         }
     }
 
-    private class sqrt implements expr {
-        expr operand;
-
-        sqrt(expr operand) {
-            this.operand = operand;
+    static class Multiply extends BinaryExpression {
+        Multiply(Expression... expressions) {
+            super("*", 0.0, (l, r) -> l * r, expressions);
         }
+    }
 
-        public double eval() {
-            return Math.sqrt(operand.eval());
-        }
-
-        public String toString() {
-            return "sqrt(" + operand.toString() + ")";
+    static class Divide extends BinaryExpression {
+        Divide(Expression... expressions) {
+            super("/", 0.0, (l, r) -> l / r, expressions);
         }
     }
 }
