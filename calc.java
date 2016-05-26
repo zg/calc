@@ -4,6 +4,7 @@ import java.util.Queue;
 import java.util.Scanner;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.DoubleBinaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * calc - a prefix notation calculator
@@ -21,9 +22,10 @@ public class calc {
             Scanner exprScanner = new Scanner(expr);
             while(exprScanner.hasNext())
                 q.add(exprScanner.next());
-            System.out.println(q);
+            System.out.println("Tokens: " + q);
             try {
                 Expression res = parse(q);
+                System.out.println("In-fix: " + res);
                 System.out.println(res.eval());
             } catch(Exception e) {
                 System.err.println("Error: " + e.getMessage());
@@ -37,19 +39,16 @@ public class calc {
         try {
             return new Number(Double.parseDouble(token));
         } catch(NumberFormatException nfe) {
-            if(token.equals("(+")) {
-                return new Add(parse(q), parse(q));
-            } else if(token.equals("(-")) {
-                if(q.peek().contains(")"))
-                    return new Negate(parse(q));
-                else
-                    return new Subtract(parse(q), parse(q));
-            } else if(token.equals("(*")) {
-                return new Multiply(parse(q), parse(q));
-            } else if(token.equals("(/")) {
-                return new Divide(parse(q), parse(q));
-            } else if(token.equals("(sqrt")) {
-                return new SquareRoot(parse(q));
+            switch(token) {
+                case "(sqrt": return new SquareRoot(parse(q));
+                case "(+": return new Add(parse(q), parse(q));
+                case "(*": return new Multiply(parse(q), parse(q));
+                case "(/": return new Divide(parse(q), parse(q));
+                case "(-":
+                    if(q.peek().contains(")"))
+                        return new Negate(parse(q));
+                    else
+                        return new Subtract(parse(q), parse(q));
             }
         }
         throw new Exception("Invalid input.");
@@ -136,11 +135,9 @@ public class calc {
         }
 
         public String toString() {
-            Iterator it = expressions.iterator();
-            String ret = it.next().toString();
-            for(Expression expression : expressions)
-                ret += operator + it.next().toString();
-            return ret;
+            return expressions.stream()
+                              .map(Object::toString)
+                              .collect(Collectors.joining(" " + operator + " ", "(", ")"));
         }
     }
 
