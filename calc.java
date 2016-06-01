@@ -46,9 +46,8 @@ public class calc {
                 .replace("(+", "(0+")
                 .replace(",+", ",0+")
                 .replace("π", Double.toString(Math.PI))
-                .replace("exp", "Exp")
                 .replace("e", Double.toString(Math.E))
-                .replace("Exp", "exp");
+                .toLowerCase();
         if(input.charAt(0) == '-' || input.charAt(0) == '+')
             input = "0" + input;
 
