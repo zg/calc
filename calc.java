@@ -16,7 +16,10 @@ public class calc {
     static final String OPERATORS = "-+*/^%";
     static final String FUNCTIONS = "sin cos tan asin acos atan exp min max";
 
-    public calc() throws Exception {
+    private static boolean debug = false;
+
+    public calc(boolean debug) throws Exception {
+        this.debug = debug;
         Scanner scanner = new Scanner(System.in);
         while(true) {
             System.out.print("> ");
@@ -26,13 +29,13 @@ public class calc {
                 usage();
 
             Stack<String> rpn = parse(input);
-            System.out.println("RPN: " + rpn);
+            if (debug) System.out.println("RPN: " + rpn);
 
             Expression ast = toAST(rpn);
-            System.out.println("AST: " + ast);
+            if (debug) System.out.println("AST: " + ast);
 
             double val = ast.eval();
-            System.out.println("Val: " + val);
+            System.out.println(val);
         }
     }
 
@@ -45,6 +48,7 @@ public class calc {
                 .replace(",-", ",0-")
                 .replace("(+", "(0+")
                 .replace(",+", ",0+")
+                .replace("pi", Double.toString(Math.PI))
                 .replace("π", Double.toString(Math.PI))
                 .replace("e", Double.toString(Math.E))
                 .toLowerCase();
@@ -195,8 +199,11 @@ public class calc {
     }
 
     public static void main(String[] args) throws Exception {
+        boolean debug = false;
+        if(args.length > 0 && (args[0].equals("-v") || args[0].equals("--verbose")))
+            debug = true;
         try {
-            new calc();
+            new calc(debug);
         } catch(Exception e) {
             System.exit(1);
         }
